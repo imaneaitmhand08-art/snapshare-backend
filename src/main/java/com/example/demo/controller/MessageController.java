@@ -23,28 +23,39 @@ public class MessageController {
     @Autowired
  private com.example.demo.repository.MessageRepository messageRepository;
 
-    // Envoyer un message
-    @PostMapping("/{receiverId}")
-    public ResponseEntity<?> sendMessage(
-            @PathVariable Long receiverId,
-            @RequestBody Map<String, String> body,
-            Authentication auth) {
-        try {
-            User sender = userService.findByEmail(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-            User receiver = userService.findById(receiverId)
-                .orElseThrow(() -> new RuntimeException("Destinataire non trouvé"));
+    // Écoute POST /api/messages/{receiverId}
+@PostMapping("/{receiverId}")
+public ResponseEntity<?> sendMessage(
+        @PathVariable Long receiverId,         // ← id du destinataire extrait de l'URL
+        @RequestBody Map<String, String> body, // ← Body JSON { "content": "Bonjour !" }
+        Authentication auth) {                  // ← Header Authorization (expéditeur connecté)
+    try {
+        // Récupère l'expéditeur grâce au Header Authorization
+        // auth.getName() → email → SELECT * FROM users WHERE email = ?
+        User sender = userService.findByEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            Message message = messageService.sendMessage(sender, receiver, body.get("content"));
+        // Récupère le destinataire grâce à l'id dans l'URL
+        // SELECT * FROM users WHERE id = receiverId
+        User receiver = userService.findById(receiverId)
+            .orElseThrow(() -> new RuntimeException("Destinataire non trouvé"));
 
-            Map<String, Object> result = messageToMap(message);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(e.getMessage());
-        }
+        // Envoie sender + receiver + content au Service
+        // body.get("content") → récupère "Bonjour !" du Body JSON
+        Message message = messageService.sendMessage(
+            sender, receiver, body.get("content")
+        );
+
+        // Convertit le message en JSON et retourne HTTP 200
+        Map<String, Object> result = messageToMap(message);
+        return ResponseEntity.ok(result);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        // Si erreur → retourne HTTP 500
+        return ResponseEntity.status(500).body(e.getMessage());
     }
-
+}
     // Récupérer la conversation avec un user
     @GetMapping("/conversation/{userId}")
     public ResponseEntity<?> getConversation(

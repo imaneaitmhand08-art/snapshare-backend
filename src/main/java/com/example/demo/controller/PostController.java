@@ -41,19 +41,30 @@ public class PostController {
         return map;
     }
 
-    @PostMapping
-    public ResponseEntity<?> createPost(@RequestBody Post post, Authentication auth) {
-        try {
-            User user = userService.findByEmail(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-            post.setUser(user);
-            Post saved = postService.createPost(post);
-            return ResponseEntity.ok(postToMap(saved));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(e.getMessage());
-        }
+    @PostMapping  // Écoute POST /api/posts
+public ResponseEntity<?> createPost(
+        @RequestBody Post post,  // Convertit le JSON reçu en objet Post
+        Authentication auth) {   // Contient les infos de l'utilisateur connecté
+    try {
+        // Récupère l'utilisateur connecté grâce à son email
+        User user = userService.findByEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        // Associe le post à l'utilisateur → remplit la colonne user_id
+        post.setUser(user);
+        
+        // Appelle PostService → PostRepository → INSERT INTO posts
+        Post saved = postService.createPost(post);
+        
+        // Retourne le post créé en JSON avec HTTP 200
+        return ResponseEntity.ok(postToMap(saved));
+        
+    } catch (Exception e) {
+        e.printStackTrace();
+        // Si erreur → retourne HTTP 500 avec le message d'erreur
+        return ResponseEntity.status(500).body(e.getMessage());
     }
+}
 
     @GetMapping
     public ResponseEntity<?> getAllPosts() {
